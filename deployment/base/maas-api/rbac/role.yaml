@@ -4,6 +4,10 @@ metadata:
   name: maas-api-resources
   namespace: models-as-a-service
 rules:
+# Database connection secret — maas-api reads maas-db-config at startup
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
 # MaaS CRs for the models endpoint and subscription selector (cached via informer)
 # These resources are namespace-scoped in the models-as-a-service namespace
 - apiGroups: ["maas.opendatahub.io"]
