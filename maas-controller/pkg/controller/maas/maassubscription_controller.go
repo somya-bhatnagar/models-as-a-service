@@ -1290,11 +1290,4 @@ func (r *MaaSSubscriptionReconciler) mapHTTPRouteToMaaSSubscriptions(ctx context
 	return requests
 }
 
-// crdExists checks if a custom resource definition exists in the cluster.
-// This allows optional features (like Kuadrant rate limiting) to be disabled
-// if their CRDs are not installed.
-func crdExists(mapper apimeta.RESTMapper, group, version, kind string) bool {
-	gvk := schema.GroupVersionKind{Group: group, Version: version, Kind: kind}
-	_, err := mapper.RESTMapping(gvk.GroupKind(), version)
-	return err == nil
-}
+
