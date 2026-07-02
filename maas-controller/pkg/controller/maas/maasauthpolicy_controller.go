@@ -1736,10 +1736,6 @@ func (r *MaaSAuthPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			"effectiveAuthzTTL", r.authzCacheTTL())
 	}
 
-	// Watch generated AuthPolicies so we re-reconcile when someone manually edits them.
-	generatedAuthPolicy := &unstructured.Unstructured{}
-	generatedAuthPolicy.SetGroupVersionKind(schema.GroupVersionKind{Group: "kuadrant.io", Version: "v1", Kind: "AuthPolicy"})
-
 	// Watch Tenant so we re-reconcile when OIDC configuration changes.
 	tenant := &unstructured.Unstructured{}
 	tenant.SetGroupVersionKind(schema.GroupVersionKind{
@@ -1762,10 +1758,7 @@ func (r *MaaSAuthPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&maasv1alpha1.MaaSModelRef{}, handler.EnqueueRequestsFromMapFunc(
 			r.mapMaaSModelRefToMaaSAuthPolicies,
 		)).
-		// Watch generated AuthPolicies so manual edits get overwritten by the controller.
-		Watches(generatedAuthPolicy, handler.EnqueueRequestsFromMapFunc(
-			r.mapGeneratedAuthPolicyToParent,
-		)).
+
 		// Watch Tenant so OIDC configuration changes trigger reconciles.
 		Watches(tenant, handler.EnqueueRequestsFromMapFunc(
 			r.mapTenantToMaaSAuthPolicies,
@@ -1775,6 +1768,17 @@ func (r *MaaSAuthPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&maasv1alpha1.AITenant{}, handler.EnqueueRequestsFromMapFunc(
 			r.mapAITenantToMaaSAuthPolicies,
 		))
+
+	// Watch generated AuthPolicies only if Kuadrant is installed.
+	// Allows the controller to run without Kuadrant (auth policies disabled).
+	if crdExists(mgr.GetRESTMapper(), "kuadrant.io", "v1", "AuthPolicy") {
+		generatedAuthPolicy := &unstructured.Unstructured{}
+		generatedAuthPolicy.SetGroupVersionKind(schema.GroupVersionKind{Group: "kuadrant.io", Version: "v1", Kind: "AuthPolicy"})
+		b = b.Watches(generatedAuthPolicy, handler.EnqueueRequestsFromMapFunc(
+			r.mapGeneratedAuthPolicyToParent,
+		))
+	}
+
 	if r.TenantNamespaceDiscoveryEnabled {
 		// Watch Namespaces so that policies in newly labeled tenant
 		// namespaces are discovered without a controller restart.
