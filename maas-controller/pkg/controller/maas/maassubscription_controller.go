@@ -1289,5 +1289,3 @@ func (r *MaaSSubscriptionReconciler) mapHTTPRouteToMaaSSubscriptions(ctx context
 	}
 	return requests
 }
-
-
