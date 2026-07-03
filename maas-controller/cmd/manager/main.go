@@ -590,31 +590,17 @@ func main() {
 	}
 
 	nsCfg := map[string]cache.Config{maasSubscriptionNamespace: {}}
+	// Restrict the Secret informer to the subscription namespace so the cluster-wide
+	// secrets LIST/WATCH is not required — namespace-scoped RBAC is sufficient.
+	// MaaS CRs (Tenant, MaaSAuthPolicy, MaaSSubscription) use the default cluster-wide
+	// cache to avoid controller-runtime ByObject cache init issues with cold clusters.
 	cacheOpts := cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
-			// Tenant CRs are watched cluster-wide to support AITenant-created tenants in any namespace.
-			// TODO: Replace with proper namespace discovery from S1 when merged.
-			&maasv1alpha1.Tenant{}:           {},
-			&maasv1alpha1.MaaSAuthPolicy{}:   {Namespaces: nsCfg},
-			&maasv1alpha1.MaaSSubscription{}: {Namespaces: nsCfg},
-			// Restrict the Secret informer to the subscription namespace so the cluster-wide
-			// secrets LIST/WATCH is not required — namespace-scoped RBAC is sufficient.
 			&corev1.Secret{}: {Namespaces: nsCfg},
 		},
 	}
 	setupLog.Info("watching namespace for MaaS CRs", "namespace", maasSubscriptionNamespace)
 	if enableTenantNamespaceDiscovery {
-		allNamespacesCfg := map[string]cache.Config{cache.AllNamespaces: {}}
-		cacheOpts = cache.Options{
-			ByObject: map[client.Object]cache.ByObject{
-				&maasv1alpha1.Tenant{}:           {Namespaces: allNamespacesCfg},
-				&maasv1alpha1.MaaSAuthPolicy{}:   {Namespaces: allNamespacesCfg},
-				&maasv1alpha1.MaaSSubscription{}: {Namespaces: allNamespacesCfg},
-				// Keep secrets scoped even in multi-tenant mode; the watch predicate
-				// (inTenantWorkNamespaces) already filters to relevant namespaces.
-				&corev1.Secret{}: {Namespaces: nsCfg},
-			},
-		}
 		setupLog.Info("watching MaaS CRs across all namespaces for tenant discovery",
 			"defaultNamespace", maasSubscriptionNamespace,
 			"tenantNamespaceLabel", tenantreconcile.LabelAIGatewayTenant,
