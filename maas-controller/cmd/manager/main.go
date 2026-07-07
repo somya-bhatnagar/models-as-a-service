@@ -51,6 +51,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	componentsv1alpha1 "github.com/opendatahub-io/models-as-a-service/maas-controller/api/components/v1alpha1"
 	maasv1alpha1 "github.com/opendatahub-io/models-as-a-service/maas-controller/api/maas/v1alpha1"
 	"github.com/opendatahub-io/models-as-a-service/maas-controller/pkg/controller/maas"
 	"github.com/opendatahub-io/models-as-a-service/maas-controller/pkg/platform/tenantreconcile"
@@ -70,6 +71,7 @@ func init() {
 	utilruntime.Must(extv1.AddToScheme(scheme))
 	utilruntime.Must(kservev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(gatewayapiv1.Install(scheme))
+	utilruntime.Must(componentsv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(maasv1alpha1.AddToScheme(scheme))
 }
 
@@ -724,6 +726,8 @@ func main() {
 	//   3. ensureClusterBootstrapRunnable creates the default AITenant once Config/default exists (no owner refs).
 	//   4. AITenant reconciler creates/adopts Tenant/default-tenant.
 	//   5. LifecycleReconciler patches Config→AITenant/Tenant owner refs.
+	//   5. ModelsAsServiceReconciler aggregates all Tenant/default-tenant status onto the
+	//      platform-facing ModelsAsService singleton when the platform creates that CR.
 	//   6. If Tenant reconciles before Config exists, readyConfigOrWait requeues until the anchor appears.
 
 	manifestPath := os.Getenv("MAAS_PLATFORM_MANIFESTS")
@@ -748,6 +752,12 @@ func main() {
 		MetadataCacheTTL:                metadataCacheTTL,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Tenant")
+		os.Exit(1)
+	}
+	if err := (&maas.ModelsAsServiceReconciler{
+		Client: mgr.GetClient(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ModelsAsService")
 		os.Exit(1)
 	}
 
