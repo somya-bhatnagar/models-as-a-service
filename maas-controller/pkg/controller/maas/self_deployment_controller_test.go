@@ -3,9 +3,11 @@ package maas
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	goruntime "runtime"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1286,9 +1288,9 @@ func TestPatchPersesDatasourceURL(t *testing.T) {
 			},
 		}
 
-	err := patchPersesDatasourceURL(configMap)
-	g.Expect(err).NotTo(HaveOccurred())
-})
+		err := patchPersesDatasourceURL(configMap)
+		g.Expect(err).NotTo(HaveOccurred())
+	})
 }
 
 func TestLifecycleReconciler_TeardownOptimizedCleanupAllAITenantsInSinglePass(t *testing.T) {
@@ -1333,7 +1335,8 @@ func TestLifecycleReconciler_TeardownOptimizedCleanupAllAITenantsInSinglePass(t 
 			func() []runtime.Object {
 				objs := make([]runtime.Object, len(aitenants))
 				for i, a := range aitenants {
-					objs[i] = a.(runtime.Object) //nolint:errcheck
+					//nolint:errcheck,forcetypeassert
+					objs[i] = a.(runtime.Object)
 				}
 				return objs
 			}()...)...).
